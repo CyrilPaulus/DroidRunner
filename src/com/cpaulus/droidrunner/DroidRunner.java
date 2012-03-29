@@ -98,8 +98,7 @@ public class DroidRunner extends Activity {
         droidView.setTextView((TextView) findViewById(R.id.text));
 
         if (savedInstanceState == null) {
-            // we were just launched: set up a new game
-            droidThread.setState(DroidThread.STATE_READY);
+            // we were just launched: set up a new game            
             Log.w(this.getClass().getName(), "SIS is null");
         } else {
             // we are being restored: resume a previous game

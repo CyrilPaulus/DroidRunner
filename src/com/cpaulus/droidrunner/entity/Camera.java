@@ -51,6 +51,14 @@ public class Camera extends Entity{
         }
     }
     
+    public double globalToLocalX(double xIn) {
+        return xIn - x;
+    }
+    
+    public double globalToLocalY(double yIn) {
+        return yIn - y;
+    }
+        
     public void track(Entity ent) {
         tracked = ent;
     }

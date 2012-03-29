@@ -145,23 +145,15 @@ public class AiAgent {
     public Input update(double frametime) {
         Input rtn = new Input();
         
-        int x0 = (int)(c.getX() / Block.WIDTH);
+      /*  int x0 = (int)(c.getX() / Block.WIDTH);
         int y0 = (int)(c.getY() / Block.HEIGHT);
 
         int x1 = (int)(world.getPlayer().getX() / Block.WIDTH);
         int y1 = (int)(world.getPlayer().getY() / Block.HEIGHT);
         
         long now = System.currentTimeMillis();
-        if (now > lastUpdate + 1000 && path.isEmpty()) {
-            lastUpdate = now;
-
-            Goal nearest = world.getNearestGoals(c.getX(), c.getY());
-            if (nearest != null && Math.random() >= 0.8) {
-                path = computePath(x0, y0, (int) nearest.getX() / Block.WIDTH, (int) nearest.getY() / Block.HEIGHT);
-            } else {
-                path = computePath(x0, y0, x1, y1);
-            }
-
+        if (now > lastUpdate + 1000) {
+            path = computePath(x0, y0, x1, y1);
         }
         
         if (!path.isEmpty()) {
@@ -192,7 +184,7 @@ public class AiAgent {
             
             if(distX * distX + distY * distY <= 64 )
                 path.pop();
-        }
+        }*/
         
         return rtn;
     }

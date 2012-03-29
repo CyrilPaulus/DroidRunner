@@ -5,6 +5,7 @@
 package com.cpaulus.droidrunner.entity;
 
 import android.content.res.Resources;
+import android.graphics.Canvas;
 
 /**
  *
@@ -45,6 +46,9 @@ public abstract class Block extends Entity {
         super(w, res);
     }
     
+    public void update(double frametime){};
+    public void carve(){};
+    
     abstract public boolean isSolid();
     abstract public boolean isLadder();
     abstract public boolean isRope();
@@ -53,5 +57,7 @@ public abstract class Block extends Entity {
     public BlockType getType() {
         return type;
     }
+    
+    
     
 }

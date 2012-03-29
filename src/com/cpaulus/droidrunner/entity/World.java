@@ -81,11 +81,16 @@ public class World {
 
     public WorldState update(double frametime, Input input) {
         player.update(frametime, input);
+        
         for (Enemy e : enemies) {
             e.update(frametime);
             if (e.intersects(player) && !isGod) {
                 return WorldState.DEAD;
             }
+        }
+        
+        for (Block b : blocks) {
+            b.update(frametime);            
         }
 
         for (Goal g : goals) {
@@ -377,8 +382,11 @@ public class World {
                 min = g;
             }
         }
-        return min;
+        return min;       
         
-        
+    }
+    
+    public int getGoalLeft() {
+        return goalCount;
     }
 }

@@ -13,7 +13,9 @@ import android.os.Handler;
 import android.os.Message;
 import android.text.TextPaint;
 import android.util.AttributeSet;
+import android.view.GestureDetector;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -21,8 +23,6 @@ import android.widget.TextView;
 import com.cpaulus.droidrunner.entity.Camera;
 import com.cpaulus.droidrunner.entity.*;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -46,8 +46,7 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
         private Handler mHandler;
         private boolean mRun = false;
         private SurfaceHolder mSurfaceHolder;
-        private int mMode;
-        private Ticker ticker;
+        private int mMode;      
         private Camera camera;
         private World world;      
         private static final String KEY_CAMX = "camX";
@@ -58,6 +57,17 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
         private int live = 3;
         double fps;
         boolean reloadMap = false;
+        long lastDownEvent = 0;
+        boolean isTouchDown  = false;
+        boolean isLeftDown = false;
+        boolean isRightDown = false;
+        boolean isUpDown = false;
+        boolean isDownDown = false;
+        boolean isCarveLeftDown = false;
+        boolean isCarveRightDown = false;
+        double touchX = 0;
+        double touchY = 0;
+      
               
         int screenWidth;
         int screenHeight;
@@ -76,9 +86,7 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
                 Handler handler) {
 
             fps = 0;
-            input = new Input();
-
-            
+            input = new Input();            
             
             paint = new TextPaint();
             paint.setTextSize(30);
@@ -95,15 +103,16 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
 
             camera = new Camera();
             world = new World(res, camera);
+            lastFrametime = System.currentTimeMillis();
             
+              
             
             
             try {
                 world.loadFromMap(manager.open("map/map0"));
             } catch (IOException ex) {
                 Logger.getLogger(DroidView.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            ticker = new Ticker();
+            }         
 
         }
 
@@ -112,7 +121,7 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
          */
         public void doStart() {
             synchronized (mSurfaceHolder) {
-                setState(STATE_RUNNING);
+                
 
             }
         }
@@ -123,7 +132,8 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
         public void pause() {
             synchronized (mSurfaceHolder) {
                 if (mMode == STATE_RUNNING) {
-                    setState(STATE_PAUSE);
+                    
+                    
                 }
             }
         }
@@ -137,8 +147,7 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
          */
         public synchronized void restoreState(Bundle savedState) {
             synchronized (mSurfaceHolder) {
-                setState(STATE_PAUSE);
-               
+                       
                 
                 map = savedState.getInt("KEY_MAP");
                 try {
@@ -177,21 +186,13 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
         @Override
         public void run() {
             while (mRun) {
+
                 Canvas c = null;
                 try {
                     c = mSurfaceHolder.lockCanvas(null);
                     synchronized (mSurfaceHolder) {
-                        if (ticker.tick()) {
-                            update(ticker.getElapsedTime());
-                        } else {
-                            try {
-                                sleep(10);
-                            } catch (InterruptedException ex) {
-                                Logger.getLogger(DroidView.class.getName()).log(Level.SEVERE, null, ex);
-                            }
-                        }
+                        update();
                         doDraw(c);
-
                     }
                 } finally {
                     if (c != null) {
@@ -216,7 +217,6 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
                     bundle.putBoolean("KEY_PLAINSCREEN", camera.getPlainScreen());
                     bundle.putDouble(KEY_CAMX, Double.valueOf(camera.getX()));
                     bundle.putDouble(KEY_CAMY, Double.valueOf(camera.getY()));
-
                 }
 
             }
@@ -235,46 +235,8 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
             mRun = b;
         }
 
-        /**
-         * Sets the game mode. That is, whether we are running, paused, in the
-         * failure state, in the victory state, etc.
-         *
-         * @see #setState(int, CharSequence)
-         * @param mode one of the STATE_* constants
-         */
-        public void setState(int mode) {
-            synchronized (mSurfaceHolder) {
-                setState(mode, null);
-            }
-        }
-
-        /**
-         * Sets the game mode. That is, whether we are running, paused, in the
-         * failure state, in the victory state, etc.
-         *
-         * @param mode one of the STATE_* constants
-         * @param message string to add to screen or null
-         */
-        public void setState(int mode, CharSequence message) {
-            /*
-             * This method optionally can cause a text message to be displayed
-             * to the user when the mode changes. Since the View that actually
-             * renders that text is part of the main View hierarchy and not
-             * owned by this thread, we can't touch the state of that View.
-             * Instead we use a Message + Handler to relay commands to the main
-             * thread, which updates the user-text View.
-             */
-            synchronized (mSurfaceHolder) {
-                mMode = mode;
-                Message msg = mHandler.obtainMessage();
-                Bundle b = new Bundle();
-                b.putString("text", "");
-                b.putInt("viz", View.INVISIBLE);
-                msg.setData(b);
-                mHandler.sendMessage(msg);
-            }
-        }
-
+       
+   
         /*
          * Callback invoked when the surface dimensions change.
          */
@@ -287,16 +249,7 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
             }
         }
 
-        /**
-         * Resumes from a pause.
-         */
-        public void unpause() {
-            // Move the real time clock up to now
-            synchronized (mSurfaceHolder) {
-            }
-            setState(STATE_RUNNING);
-        }
-
+ 
         /**
          * Handles a key-down event.
          *
@@ -307,18 +260,20 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
         boolean doKeyDown(int keyCode, KeyEvent msg) {
             synchronized (mSurfaceHolder) {
                 if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    input.Up = true;
+                    isUpDown = true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                    input.Down = true;
+                    isDownDown = true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                    input.Left = true;
+                    isLeftDown = true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                    input.Right = true;
+                    isRightDown = true;
+                } else if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+                    isCarveLeftDown = true;
+                } else if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                    isCarveRightDown = true;
                 } else {
                     return false;
                 }
-
-
                 return true;
             }
 
@@ -335,13 +290,17 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
 
             synchronized (mSurfaceHolder) {
                 if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    input.Up = false;
+                    isUpDown = false;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                    input.Down = false;
+                    isDownDown = false;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                    input.Left = false;
+                    isLeftDown = false;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                    input.Right = false;
+                    isRightDown = false;
+                } else if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+                    isCarveLeftDown = false;
+                } else if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                    isCarveRightDown = false;
                 } else {
                     return false;
                 }
@@ -355,6 +314,9 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
          * Canvas.
          */
         private void doDraw(Canvas canvas) {
+            String liveString = "Lives:" + live;
+            String goalCountString = "Goals: " + world.getGoalLeft();
+            
             canvas.drawRGB(100, 149, 237);
             
             
@@ -368,11 +330,10 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
             else
                 canvas.translate(-(int) camera.getX(), -(int) camera.getY());
             
-            
-            
             world.draw(canvas);
             canvas.restore();
-            canvas.drawText("Lives:" + live, 0, screenHeight, paint);
+            canvas.drawText(liveString, 0, screenHeight, paint);
+            canvas.drawText(goalCountString, screenWidth - paint.measureText(goalCountString), screenHeight, paint);
                     
         }
 
@@ -381,7 +342,9 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
          * realtime. Does not invalidate(). Called at the start of draw().
          * Detects the end-of-game and sets the UI to the next state.
          */
-        private void update(long milli) {
+        private void update() {
+            updateInput();
+            long now = System.currentTimeMillis();
             
             if(reloadMap) {
                 reloadMap = false;
@@ -392,7 +355,11 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
                 }                
             }
             
-            double seconds = milli / 1000.0;            
+            if(lastFrametime > now)
+                return;
+            
+            double seconds = Math.min((now - lastFrametime) / 1000.0, 0.5);
+                     
             switch(world.update(seconds, input)) {
                 case DEAD:
                     reloadMap = true;
@@ -406,11 +373,73 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
                     break;
             }
             camera.update();
+            lastFrametime = now;
 
         }
         
         public void togglePlainScreen() {
             camera.setPlainScreen(!camera.getPlainScreen());            
+        }
+
+        private void updateInput() {
+            input.Left = isLeftDown;
+            input.Right = isRightDown;
+            input.Up = isUpDown;
+            input.Down = isDownDown;
+            input.CarveLeft = isCarveLeftDown;
+            input.CarveRight = isCarveRightDown;
+            
+            
+            long now = System.currentTimeMillis();
+            if(isTouchDown && now - lastDownEvent > 100) {
+                  if(touchX > camera.globalToLocalX(world.getPlayer().getRight())) {
+                    input.Right = true;
+                    input.Left = false;
+                }            
+                else if(touchX < camera.globalToLocalX(world.getPlayer().getX())) {
+                    input.Left = true;
+                    input.Right = false;
+                } else {
+                    input.Left = false;
+                    input.Right = false;
+                }
+                
+                if(touchY > camera.globalToLocalY(world.getPlayer().getBottom())) {
+                    input.Up = false;
+                    input.Down = true;
+                } else if (touchY < camera.globalToLocalY(world.getPlayer().getY())){
+                    input.Down = false;
+                    input.Up = true;
+                } else {
+                    input.Up = false;
+                    input.Down = false;
+                }
+                
+            } else if(!isTouchDown && now - lastDownEvent < 200) {
+                 if(touchX > camera.globalToLocalX(world.getPlayer().getRight())) 
+                     input.CarveRight = true;
+                 else if(touchX < camera.globalToLocalX(world.getPlayer().getX())) {
+                     input.CarveLeft = true;
+                 }
+            }             
+            
+        }
+        private boolean doTouch(MotionEvent evt) {
+            long now = System.currentTimeMillis();
+            
+            if(evt.getAction() == MotionEvent.ACTION_DOWN) {
+                lastDownEvent = now;
+                isTouchDown = true;
+            }
+            
+            if(evt.getAction() == MotionEvent.ACTION_UP) {
+                isTouchDown = false;
+            }
+            
+            touchX = evt.getX();
+            touchY = evt.getY();              
+            
+            return true;
         }
     }
     /**
@@ -470,6 +499,11 @@ class DroidView extends SurfaceView implements SurfaceHolder.Callback {
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent msg) {
         return thread.doKeyUp(keyCode, msg);
+    }
+    
+    @Override
+    public boolean onTouchEvent(MotionEvent evt) {
+        return thread.doTouch(evt);
     }
 
     /**

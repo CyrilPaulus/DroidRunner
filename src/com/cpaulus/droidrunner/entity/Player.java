@@ -69,6 +69,16 @@ public class Player extends Entity{
          * y0); if (b && b->getType() == Block::WALL && !c->isSolid() &&
          * !c->isLadder() && !c->isRope()) b->setActive(false); } lastInput = input;
          */
+        int x0 = (int) (x / Block.WIDTH); 
+        int y0 = (int) (y / Block.HEIGHT);
+        
+        if(input.CarveLeft) {
+            world.getBlock(x0 - 1, y0 + 1).carve();
+        }
+        
+        if(input.CarveRight) {
+            world.getBlock(x0 + 1, y0 + 1).carve();
+        }
 
         double directionX = 0;
         double directionY = 0;
