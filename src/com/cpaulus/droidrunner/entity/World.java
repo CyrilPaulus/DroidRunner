@@ -389,4 +389,12 @@ public class World {
     public int getGoalLeft() {
         return goalCount;
     }
+    
+    public boolean enemyOccupied(int x, int y) {
+        for(Enemy e: enemies)
+            if((int)(e.getCenterX() / Block.WIDTH) == x 
+                    && (int)(e.getCenterY() / Block.HEIGHT) == y)
+                return true;            
+        return false;
+    }
 }

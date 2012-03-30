@@ -19,8 +19,8 @@ public class Enemy extends Player {
     public Enemy(World w, Resources res) {
         super(w, res);
         setImage(res.getDrawable(R.drawable.them));
-        speedX = 175;
-        speedY = 150;
+        speedX = 92;
+        speedY = 75;
         e = new AiAgent(w, this);
     }
     

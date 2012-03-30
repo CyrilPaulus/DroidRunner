@@ -97,15 +97,11 @@ public class Player extends Entity{
             }
 
             if (input.Up || input.Down) {
-                if (Math.abs(getCenterX() - ladder.getCenterX()) < getSpeedX() * frametime) {
+                if (Math.abs(getCenterX() - ladder.getCenterX()) < getSpeedX() * frametime) 
                     alignToGridX();
-                } else if (getCenterX() < ladder.getCenterX()) {
-                    directionX += getSpeedX();
-                } else if (getCenterX() > ladder.getCenterX()) {
-                    directionX -= getSpeedX();
-                }
+               
 
-                isCentring = true;
+                //isCentring = true;
             }
 
         } else {
